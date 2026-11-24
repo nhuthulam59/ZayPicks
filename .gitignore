@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+# next.js
+.next/
+out/
+# env files (never commit secrets)
+.env
+.env.local
+.env*.local
+# debug / system
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
