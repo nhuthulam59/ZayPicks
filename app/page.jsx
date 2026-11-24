@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 export default function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [sheets, setSheets] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState("all");
   const [allResults, setAllResults] = useState([]);
   const [categories, setCategories] = useState([]);
   const [tabs, setTabs] = useState([]);
@@ -28,6 +30,7 @@ export default function Home() {
       }
       setAllResults(data.results || []);
       setCategories(data.categories || []);
+      setSheets(data.sheets || []);
       setTabs(data.tabs || []);
       setTotal(data.total || 0);
     } catch (e) {
@@ -50,12 +53,25 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  // Per-sheet filter: only rows from the chosen spreadsheet.
+  // "all" keeps the current merged view of every sheet.
+  const sheetFiltered = useMemo(() => {
+    if (selectedSheet === "all") return allResults;
+    return allResults.filter((r) => r.sheetId === selectedSheet);
+  }, [allResults, selectedSheet]);
+
+  // Category chips belong to the chosen sheet only.
+  const sheetCategories = useMemo(
+    () => [...new Set(sheetFiltered.map((r) => r.category).filter(Boolean))].sort(),
+    [sheetFiltered]
+  );
+
   // Cell-level search on the device too: a word matches when it appears in
   // ANY box of the row — Title, Category, Details, Link, or any other
   // column — and the matching boxes are attached so the UI can show them.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allResults
+    return sheetFiltered
       .map((r) => {
         if (category !== "All" && r.category !== category) return null;
         if (!q) return { ...r, matchedCells: [] };
@@ -68,7 +84,7 @@ export default function Home() {
         return { ...r, matchedCells: cells };
       })
       .filter(Boolean);
-  }, [allResults, query, category]);
+  }, [sheetFiltered, query, category]);
 
   // Live suggestions, one per matching BOX (not just one per row): as soon
   // as you type, every cell that contains the word appears under the
@@ -176,8 +192,8 @@ export default function Home() {
                     </span>
                     <span className="suggestion-meta">
                       {s.cell
-                        ? `${s.cell.column} · Row ${s.row.row} · ${s.row.tab} — ওই ঘরটিতে যান ↗`
-                        : `${s.row.tab}${s.row.row ? ` · Row ${s.row.row}` : ""} — Sheet-এ দেখুন ↗`}
+                        ? `${s.cell.column} · Row ${s.row.row} · ${(s.row.sheetName ? s.row.sheetName + " · " : "") + s.row.tab} — ওই ঘরটিতে যান ↗`
+                        : `${(s.row.sheetName ? s.row.sheetName + " · " : "") + s.row.tab}${s.row.row ? ` · Row ${s.row.row}` : ""} — Sheet-এ দেখুন ↗`}
                     </span>
                     {s.cell && s.row.title && s.cell.value !== s.row.title && (
                       <span className="suggestion-details">{s.row.title}</span>
@@ -192,9 +208,25 @@ export default function Home() {
             )}
           </div>
 
-          {categories.length > 0 && (
+          {sheets.length > 0 && (
+            <div className="chips" role="group" aria-label="Filter by spreadsheet">
+              <span className="card-tab" style={{ alignSelf: "center" }}>Sheet:</span>
+              {[{ id: "all", name: "All" }, ...sheets].map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={selectedSheet === s.id ? "chip active" : "chip"}
+                  onClick={() => { setSelectedSheet(s.id); setCategory("All"); setActiveIndex(-1); }}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {sheetCategories.length > 0 && (
             <div className="chips">
-              {["All", ...categories].map((c) => (
+              {["All", ...sheetCategories].map((c) => (
                 <button
                   key={c}
                   type="button"
@@ -226,7 +258,7 @@ export default function Home() {
         {!loading && !error && (
           <>
             <p className="meta">
-              <strong>{filtered.length}</strong> of {total} rows
+              <strong>{filtered.length}</strong> of {sheetFiltered.length} rows
             </p>
 
             {filtered.length === 0 ? (
@@ -254,7 +286,7 @@ export default function Home() {
                       </div>
                     )}
                     <div className="card-foot">
-                      <span className="card-tab">{r.tab ? `Sheet: ${r.tab}` : "Google Sheet"}</span>
+                      <span className="card-tab">{r.sheetName ? `${r.sheetName} · ${r.tab}` : (r.tab ? `Sheet: ${r.tab}` : "Google Sheet")}</span>
                       {r.sheetUrl ? (
                         <button
                           className="open-link"

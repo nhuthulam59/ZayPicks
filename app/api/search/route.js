@@ -7,7 +7,7 @@ export async function GET(request) {
   const q = searchParams.get("q") || "";
 
   try {
-    const { tabs, results } = await loadSheet();
+    const { tabs, results, sheets } = await loadSheet();
     const filtered = searchResults(results, q);
     const categories = [...new Set(results.map((r) => r.category).filter(Boolean))].sort();
     return Response.json({
@@ -15,6 +15,7 @@ export async function GET(request) {
       total: results.length,
       count: filtered.length,
       tabs,
+      sheets: sheets || [],
       categories,
       results: filtered,
     });
