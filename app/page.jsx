@@ -148,7 +148,7 @@ export default function Home() {
                 onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setActiveIndex(-1); }}
                 onFocus={() => setShowSuggestions(true)}
                 onKeyDown={onKeyDown}
-                placeholder="Search anything — e.g. headphones, cotton, yoga…"
+                placeholder="Search anything — e.g. Rahim, Mirpur, 01712…, Sales, 45000…"
                 aria-label="Search the sheet"
                 autoFocus
                 autoComplete="off"
