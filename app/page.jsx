@@ -145,11 +145,23 @@ export default function Home() {
     <>
       <header className="header">
         <div className="header-inner">
-          <span className="header-left">Google Sheet Search</span>
           <div className="logo">
             <span className="logo-mark">Z</span>
             <span className="logo-name">ZayFind</span>
           </div>
+          <nav className="header-menu" aria-label="Filter by spreadsheet">
+            {[{ id: "all", name: "All" }, ...sheets].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={selectedSheet === s.id ? "chip active" : "chip"}
+                onClick={() => { setSelectedSheet(s.id); setCategory("All"); setActiveIndex(-1); }}
+              >
+                {s.name}
+              </button>
+            ))}
+          </nav>
+          <a href="/admin" className="admin-btn">Admin Panel</a>
         </div>
       </header>
 
@@ -207,22 +219,6 @@ export default function Home() {
               </div>
             )}
           </div>
-
-          {sheets.length > 0 && (
-            <div className="chips" role="group" aria-label="Filter by spreadsheet">
-              <span className="card-tab" style={{ alignSelf: "center" }}>Sheet:</span>
-              {[{ id: "all", name: "All" }, ...sheets].map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={selectedSheet === s.id ? "chip active" : "chip"}
-                  onClick={() => { setSelectedSheet(s.id); setCategory("All"); setActiveIndex(-1); }}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           {sheetCategories.length > 0 && (
             <div className="chips">

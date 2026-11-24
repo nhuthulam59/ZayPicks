@@ -14,19 +14,32 @@
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
 a { color: var(--blue); }
 
-/* ---------- Compact header bar ---------- */
+/* ---------- Compact header bar: logo left, sheet menu middle, admin right ---------- */
 .header {
   background: #fff; border-bottom: 1px solid var(--border);
-  padding: 0 16px; height: 60px;
+  padding: 0 16px; min-height: 60px;
   display: flex; align-items: center;
   position: sticky; top: 0; z-index: 40;
 }
 .header-inner {
   max-width: 1080px; width: 100%; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
 }
-.header-left { font-size: 14px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.logo { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.logo { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.header-menu {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  overflow-x: auto; padding: 6px 4px;
+  scrollbar-width: none;
+}
+.header-menu::-webkit-scrollbar { display: none; }
+.header-menu .chip { flex-shrink: 0; white-space: nowrap; }
+.admin-btn {
+  background: var(--blue); color: #fff; border: none;
+  border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; white-space: nowrap; text-decoration: none; flex-shrink: 0;
+}
+.admin-btn:hover { background: #1e40af; }
 .logo-mark {
   width: 32px; height: 32px; border-radius: 8px;
   background: var(--blue); color: #fff;
@@ -120,7 +133,8 @@ a { color: var(--blue); }
 .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 16px 28px; }
 .loading { text-align: center; color: var(--muted); padding: 28px 0; font-size: 14px; }
 @media (max-width: 560px) {
-  .header-left { display: none; }
+  .header { padding: 8px 16px; }
+  .header-menu { order: 3; flex-basis: 100%; justify-content: flex-start; }
   .search-row { flex-wrap: wrap; }
   .search-field { flex-basis: 100%; }
   .clear-btn, .refresh-btn { flex: 1; padding: 11px 0; }
