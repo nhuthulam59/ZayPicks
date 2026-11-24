@@ -96,24 +96,41 @@ export default function Home() {
   return (
     <>
       <header className="header">
-        <h1>ZayFind</h1>
-        <p>Search any word across your Google Sheet — every tab, every column — and see the matching rows instantly. New rows you add in the Sheet appear here automatically.</p>
+        <div className="header-inner">
+          <div className="logo">
+            <span className="logo-mark">Z</span>
+            <span className="logo-name">ZayFind</span>
+          </div>
+          <h1>Find anything in your Google Sheet, instantly.</h1>
+          <p className="tagline">Search any word across every sheet, every tab and every column — and jump straight to that exact row in the Sheet.</p>
+          {!loading && !error && (
+            <div className="stats">
+              <span className="stat"><strong>{total}</strong> rows</span>
+              <span className="stat"><strong>{categories.length}</strong> categories</span>
+              <span className="stat"><strong>{tabs.length}</strong> {tabs.length === 1 ? "sheet" : "sheets"}</span>
+              <span className="stat">Live from Google Sheets</span>
+            </div>
+          )}
+        </div>
       </header>
 
       <main className="container">
         <div className="search-box">
           <div className="search-row" ref={searchWrapRef} style={{ position: "relative", flex: 1, display: "flex", gap: 8 }}>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setActiveIndex(-1); }}
-              onFocus={() => setShowSuggestions(true)}
-              onKeyDown={onKeyDown}
-              placeholder="Search anything — e.g. headphones, cotton, yoga…"
-              aria-label="Search the sheet"
-              autoFocus
-              autoComplete="off"
-            />
+            <div className="search-field">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" /></svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); setActiveIndex(-1); }}
+                onFocus={() => setShowSuggestions(true)}
+                onKeyDown={onKeyDown}
+                placeholder="Search anything — e.g. headphones, cotton, yoga…"
+                aria-label="Search the sheet"
+                autoFocus
+                autoComplete="off"
+              />
+            </div>
             {query && (
               <button className="clear-btn" onClick={() => { setQuery(""); setShowSuggestions(false); }} type="button">Clear ✕</button>
             )}
@@ -147,6 +164,7 @@ export default function Home() {
 
           {categories.length > 0 && (
             <div className="chips">
+              <span className="chips-label">Browse by category</span>
               {["All", ...categories].map((c) => (
                 <button
                   key={c}
@@ -161,7 +179,7 @@ export default function Home() {
           )}
         </div>
 
-        {loading && <p className="meta">Loading rows from the Google Sheet…</p>}
+        {loading && <p className="loading">Loading rows from the Google Sheet…</p>}
 
         {error && (
           <div className="notice" style={{ marginTop: 16 }}>
@@ -178,12 +196,14 @@ export default function Home() {
 
         {!loading && !error && (
           <>
-            <p className="meta">
-              <strong>{filtered.length}</strong> of {total} rows
-              {tabs.length > 0 && <> · Tabs: {tabs.join(", ")}</>}
-              {query && <> · for “{query}”</>}
-              {category !== "All" && <> · Category: {category}</>}
-            </p>
+            <div className="section-head">
+              <h2>{query || category !== "All" ? "Matching rows" : "All rows"}</h2>
+              <p className="meta" style={{ margin: 0 }}>
+                <strong>{filtered.length}</strong> of {total} rows
+                {query && <> · for “{query}”</>}
+                {category !== "All" && <> · {category}</>}
+              </p>
+            </div>
 
             {filtered.length === 0 ? (
               <div className="empty">
@@ -194,28 +214,56 @@ export default function Home() {
               <div className="grid">
                 {filtered.map((r, i) => (
                   <article className="card" key={`${r.tab}-${r.row || r.title}-${i}`}>
-                    <div className="badges">
-                      {r.category && <span className="badge">{r.category}</span>}
-                      {r.tab && <span className="badge tab">Tab: {r.tab}</span>}
-                      {r.row ? <span className="badge row">Row {r.row}</span> : null}
+                    <div className="card-accent" />
+                    <div className="card-body">
+                      <div className="badges">
+                        {r.category && <span className="badge">{r.category}</span>}
+                        {r.row ? <span className="badge row">Row {r.row}</span> : null}
+                      </div>
+                      <h3>{r.title || "Untitled row"}</h3>
+                      {r.details && <p className="details">{r.details}</p>}
                     </div>
-                    <h3>{r.title || "Untitled row"}</h3>
-                    {r.details && <p className="details">{r.details}</p>}
-                    {r.sheetUrl ? (
-                      <button className="open-link" type="button" onClick={() => openInSheet(r)}>
-                        Sheet-এ এই রো-টি দেখুন ↗
-                      </button>
-                    ) : null}
+                    <div className="card-foot">
+                      <span className="card-tab">{r.tab ? `Sheet: ${r.tab}` : "Google Sheet"}</span>
+                      {r.sheetUrl ? (
+                        <button className="open-link" type="button" onClick={() => openInSheet(r)}>
+                          View in Sheet ↗
+                        </button>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>
             )}
+
+            <section className="how">
+              <h2>How it works</h2>
+              <p className="sub">Your Sheet stays the single source of truth — this site only searches it.</p>
+              <div className="steps">
+                <div className="step">
+                  <div className="step-num">1</div>
+                  <h3>Add data in the Sheet</h3>
+                  <p>Add a row, a tab or a whole new spreadsheet. Press Refresh here and it appears — no rebuild needed.</p>
+                </div>
+                <div className="step">
+                  <div className="step-num">2</div>
+                  <h3>Search as you type</h3>
+                  <p>Every word is matched across all tabs and all columns. Suggestions appear instantly under the search box.</p>
+                </div>
+                <div className="step">
+                  <div className="step-num">3</div>
+                  <h3>Jump to the exact row</h3>
+                  <p>Click any result and the Google Sheet opens with that exact row selected — no other link ever opens.</p>
+                </div>
+              </div>
+            </section>
           </>
         )}
       </main>
 
       <footer className="footer">
-        Data is read live from your Google Sheet on every load — add a row in the Sheet, press Refresh, and it appears here. Clicking any result opens that exact row in the Google Sheet; no other link opens.
+        <strong>ZayFind</strong> — Search your Google Sheet, live.
+        <br />Data is read from your Sheet on every load. Add a row in the Sheet, press Refresh, and it appears here.
       </footer>
     </>
   );
