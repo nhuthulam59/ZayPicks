@@ -50,30 +50,61 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  // Cell-level search on the device too: a word matches when it appears in
+  // ANY box of the row — Title, Category, Details, Link, or any other
+  // column — and the matching boxes are attached so the UI can show them.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allResults.filter((r) => {
-      if (category !== "All" && r.category !== category) return false;
-      if (!q) return true;
-      return [r.tab, r.title, r.category, r.details, ...Object.values(r.fields || {})]
-        .join(" ")
-        .toLowerCase()
-        .includes(q);
-    });
+    return allResults
+      .map((r) => {
+        if (category !== "All" && r.category !== category) return null;
+        if (!q) return { ...r, matchedCells: [] };
+        const cells = (r.cells || []).filter((c) => String(c.value || "").toLowerCase().includes(q));
+        const haystack = (
+          r.searchText ||
+          [r.tab, r.title, r.category, r.details, r.link, ...Object.values(r.fields || {})].join(" ")
+        ).toLowerCase();
+        if (cells.length === 0 && !haystack.includes(q)) return null;
+        return { ...r, matchedCells: cells };
+      })
+      .filter(Boolean);
   }, [allResults, query, category]);
 
-  // Live suggestions: as soon as you type, matching rows appear under the
-  // search box. No Enter key, no button press needed.
+  // Live suggestions, one per matching BOX (not just one per row): as soon
+  // as you type, every cell that contains the word appears under the
+  // search box, showing its own text, column and row. No Enter key needed.
   const suggestions = useMemo(() => {
     if (!query.trim()) return [];
-    return filtered.slice(0, 8);
+    const entries = [];
+    for (const r of filtered) {
+      const matched = r.matchedCells && r.matchedCells.length > 0 ? r.matchedCells : null;
+      if (matched) {
+        for (const cell of matched) {
+          entries.push({ row: r, cell, key: `${r.tab}-${r.row}-${cell.letter}` });
+        }
+      } else {
+        // Matched on the tab name itself: show the row once.
+        entries.push({ row: r, cell: null, key: `${r.tab}-${r.row}-row` });
+      }
+      if (entries.length >= 10) break;
+    }
+    return entries;
+  }, [query, filtered]);
+  const totalSuggestions = useMemo(() => {
+    if (!query.trim()) return 0;
+    return filtered.reduce(
+      (n, r) => n + (r.matchedCells && r.matchedCells.length > 0 ? r.matchedCells.length : 1),
+      0
+    );
   }, [query, filtered]);
 
-  function openInSheet(r) {
+  function openInSheet(r, cell) {
     // Clicking a result never opens the row's Link column.
-    // It opens the Google Sheet itself, with that exact row selected.
-    if (r.sheetUrl) {
-      window.open(r.sheetUrl, "_blank", "noopener,noreferrer");
+    // It opens the Google Sheet itself — at the exact BOX that matched,
+    // or at the row when there is no single matching box.
+    const url = (cell && cell.url) || r.sheetUrl;
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
     setShowSuggestions(false);
   }
@@ -87,7 +118,8 @@ export default function Home() {
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter" && activeIndex >= 0 && suggestions[activeIndex]) {
       e.preventDefault();
-      openInSheet(suggestions[activeIndex]);
+      const s = suggestions[activeIndex];
+      openInSheet(s.row, s.cell);
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
     }
@@ -128,26 +160,33 @@ export default function Home() {
             <button className="refresh-btn" onClick={load} type="button">↻ Refresh</button>
 
             {showSuggestions && suggestions.length > 0 && (
-              <div className="suggestions" role="listbox" aria-label="Matching rows">
-                {suggestions.map((r, i) => (
+              <div className="suggestions" role="listbox" aria-label="Matching cells">
+                {suggestions.map((s, i) => (
                   <button
-                    key={`${r.tab}-${r.row}-${i}`}
+                    key={s.key}
                     type="button"
                     role="option"
                     aria-selected={i === activeIndex}
                     className={i === activeIndex ? "suggestion active" : "suggestion"}
-                    onMouseDown={(e) => { e.preventDefault(); openInSheet(r); }}
+                    onMouseDown={(e) => { e.preventDefault(); openInSheet(s.row, s.cell); }}
                     onMouseEnter={() => setActiveIndex(i)}
                   >
-                    <span className="suggestion-title">{r.title || "Untitled row"}</span>
-                    <span className="suggestion-meta">
-                      {r.category ? `${r.category} · ` : ""}{r.tab}{r.row ? ` · Row ${r.row}` : ""} — Sheet-এ দেখুন ↗
+                    <span className="suggestion-title">
+                      {s.cell ? s.cell.value : s.row.title || "Untitled row"}
                     </span>
-                    {r.details && <span className="suggestion-details">{r.details}</span>}
+                    <span className="suggestion-meta">
+                      {s.cell
+                        ? `${s.cell.column} · Row ${s.row.row} · ${s.row.tab} — ওই ঘরটিতে যান ↗`
+                        : `${s.row.tab}${s.row.row ? ` · Row ${s.row.row}` : ""} — Sheet-এ দেখুন ↗`}
+                    </span>
+                    {s.cell && s.row.title && s.cell.value !== s.row.title && (
+                      <span className="suggestion-details">{s.row.title}</span>
+                    )}
+                    {!s.cell && s.row.details && <span className="suggestion-details">{s.row.details}</span>}
                   </button>
                 ))}
-                {filtered.length > suggestions.length && (
-                  <div className="suggestion-more">আরও {filtered.length - suggestions.length}টি মিল আছে — নিচে সব দেখুন ↓</div>
+                {totalSuggestions > suggestions.length && (
+                  <div className="suggestion-more">আরও {totalSuggestions - suggestions.length}টি মিল আছে — নিচে সব দেখুন ↓</div>
                 )}
               </div>
             )}
@@ -205,10 +244,30 @@ export default function Home() {
                     </div>
                     <h3>{r.title || "Untitled row"}</h3>
                     {r.details && <p className="details">{r.details}</p>}
+                    {query.trim() && r.matchedCells && r.matchedCells.length > 0 && (
+                      <div className="match">
+                        {r.matchedCells.slice(0, 3).map((c) => (
+                          <p key={c.letter} className="match-line">
+                            <strong>{c.column}:</strong> {c.value}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                     <div className="card-foot">
                       <span className="card-tab">{r.tab ? `Sheet: ${r.tab}` : "Google Sheet"}</span>
                       {r.sheetUrl ? (
-                        <button className="open-link" type="button" onClick={() => openInSheet(r)}>
+                        <button
+                          className="open-link"
+                          type="button"
+                          onClick={() =>
+                            openInSheet(
+                              r,
+                              query.trim() && r.matchedCells && r.matchedCells[0]
+                                ? r.matchedCells[0]
+                                : null
+                            )
+                          }
+                        >
                           View in Sheet ↗
                         </button>
                       ) : null}
